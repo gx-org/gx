@@ -173,7 +173,7 @@ func TestValueHostBufferToHostError(t *testing.T) {
 	got := GoError(Error(res.error)).Error()
 	wantSubstrings := []string{
 		fmt.Sprintf("cgx_value_host_buffer: value of handle %d (type int64):", val.value),
-		"not supported",
+		"finalized",
 	}
 	for _, want := range wantSubstrings {
 		if !strings.Contains(got, want) {

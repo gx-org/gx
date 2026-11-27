@@ -44,6 +44,7 @@ var (
 	_ hostio.Under          = (*NamedType)(nil)
 	_ cmp.Canonical         = (*NamedType)(nil)
 	_ coreiface.IndexSetter = (*NamedType)(nil)
+	_ walkable              = (*NamedType)(nil)
 )
 
 // NewNamedType returns a new node representing an exported type.
@@ -93,6 +94,11 @@ func (n *NamedType) RecvCopy() engine.NamedType {
 	return NewNamedType(n.typ, engine.Copy(n.under))
 }
 
+// Walk the named type with a walker.
+func (n *NamedType) Walk(w walker) (ir.Element, error) {
+	return w.NamedType(n)
+}
+
 // Under returns the underlying element of the named type.
 func (n *NamedType) Under() (ir.Element, error) {
 	return n.under, nil
@@ -116,7 +122,7 @@ func (n *NamedType) TypeMethods() ir.TypeMethods {
 }
 
 // Unflatten consumes the next handles to return a GX value.
-func (n *NamedType) Unflatten(parser *flatten.Parser) (hostio.Value, error) {
+func (n *NamedType) Unflatten(parser hostio.Parser) (hostio.Value, error) {
 	val, err := parser.Unflatten(n.under)
 	if err != nil {
 		return nil, err

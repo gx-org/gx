@@ -205,30 +205,86 @@ func NamedType(fr ir.Evaluator, ntp *ir.NamedType) (*ir.NamedType, error) {
 	return &cNamed, nil
 }
 
-func concreteNamedType(fr ir.Evaluator, ntp *ir.NamedType) (ir.Type, error) {
-	under, err := Concrete(fr, ntp.Underlying.Val())
-	if err != nil {
-		return nil, err
+// concretized maps named types to their concrete types.
+// It is used to terminate the computation on recursive types.
+type concretized map[*ir.NamedType]*ir.NamedType
+
+func concreteNamedType(fr ir.Evaluator, ntp *ir.NamedType, done concretized) (ir.Type, error) {
+	if _, isStruct := ir.Underlying(ntp).(*ir.StructType); isStruct && len(ntp.GenParams.Values) == 0 {
+		// A structure type with no generic parameters is already concrete.
+		return ntp, nil
+	}
+	if cNamed, ok := done[ntp]; ok {
+		// Recursive type: return the concrete type being computed.
+		return cNamed, nil
 	}
 	cNamed, err := NamedType(fr, ntp)
 	if err != nil {
 		return nil, err
 	}
 	res := *cNamed
+	done[ntp] = &res
+	under, err := concreteType(fr, ntp.Underlying.Val(), done)
+	if err != nil {
+		return nil, err
+	}
 	res.Underlying = ir.TypeExpr(ntp.Underlying.Expr(), under)
 	return &res, nil
 }
 
-func concrete(fr ir.Evaluator, tp ir.Type) (ir.Type, error) {
+// concreteStructType returns a copy of a structure type where the type of each
+// field is concrete.
+func concreteStructType(fr ir.Evaluator, st *ir.StructType, done concretized) (*ir.StructType, error) {
+	fields := &ir.FieldList{Src: st.Fields.Src}
+	for _, group := range st.Fields.List {
+		groupType, err := concreteType(fr, group.Type.Val(), done)
+		if err != nil {
+			return nil, err
+		}
+		cGroup := &ir.FieldGroup{
+			Src:  group.Src,
+			Type: ir.TypeExpr(group.Type.Expr(), groupType),
+			Anns: group.Anns,
+		}
+		for _, field := range group.Fields {
+			cField := *field
+			cField.Orig = field.Origin()
+			cField.Group = cGroup
+			cGroup.Fields = append(cGroup.Fields, &cField)
+		}
+		fields.List = append(fields.List, cGroup)
+	}
+	cStruct := *st
+	cStruct.Fields = fields
+	return &cStruct, nil
+}
+
+// concreteSliceType returns a copy of a slice type where the type of the
+// elements is concrete.
+func concreteSliceType(fr ir.Evaluator, st *ir.SliceType, done concretized) (*ir.SliceType, error) {
+	dtype, err := concreteType(fr, st.DType.Val(), done)
+	if err != nil {
+		return nil, err
+	}
+	cSlice := *st
+	cSlice.DType = ir.TypeExpr(st.DType.Expr(), dtype)
+	return &cSlice, nil
+}
+
+func concrete(fr ir.Evaluator, tp ir.Type, done concretized) (ir.Type, error) {
 	if typeParam, isParam := tp.(*ir.GenericTypeParam); isParam {
 		return concreteTypeParam(fr, typeParam)
 	}
-	if irkind.IsConcrete(tp.Kind()) || ir.IsUnknown(tp) {
+	if irkind.IsConcrete(tp.Kind()) || tp.Kind() == irkind.String || ir.IsUnknown(tp) {
 		return tp, nil
 	}
 	switch tpT := tp.(type) {
 	case *ir.NamedType:
-		return concreteNamedType(fr, tpT)
+		return concreteNamedType(fr, tpT, done)
+	case *ir.StructType:
+		return concreteStructType(fr, tpT, done)
+	case *ir.SliceType:
+		return concreteSliceType(fr, tpT, done)
 	default:
 		return tp, fmterr.Internalf("cannot compute the concrete atomic type of %s:%T: not supported", tp.ReferString(fr.File()), tpT)
 	}
@@ -247,7 +303,11 @@ func concreteArrayType(fr ir.Evaluator, tp ir.ArrayType) (ir.ArrayType, error) {
 }
 
 // Concrete computes the concrete type.
-func Concrete(fr ir.Evaluator, tp ir.Type) (_ ir.Type, err error) {
+func Concrete(fr ir.Evaluator, tp ir.Type) (ir.Type, error) {
+	return concreteType(fr, tp, concretized{})
+}
+
+func concreteType(fr ir.Evaluator, tp ir.Type, done concretized) (_ ir.Type, err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("cannot resolve type %s: %w", tp.ReferString(fr.File()), err)
@@ -255,11 +315,11 @@ func Concrete(fr ir.Evaluator, tp ir.Type) (_ ir.Type, err error) {
 	}()
 	arrayType, isArray := tp.(ir.ArrayType)
 	if !isArray {
-		return concrete(fr, tp)
+		return concrete(fr, tp, done)
 	}
 	if arrayType.Rank().IsAtomic() {
 		// Avoid a infinite loop on the data type of an array.
-		dtype, err := concrete(fr, arrayType.DataType())
+		dtype, err := concrete(fr, arrayType.DataType(), done)
 		if err != nil {
 			return tp, err
 		}

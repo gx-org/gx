@@ -29,14 +29,16 @@ type binary struct {
 	core
 	expr *ir.BinaryExpr
 	x, y engine.Element
+	typ  ir.Type
 }
 
 // NewBinary returns a binary operation between two elements.
-func NewBinary(env *engine.Env, expr *ir.BinaryExpr, x, y engine.Element) (_ engine.Element, err error) {
+func NewBinary(env *engine.Env, expr *ir.BinaryExpr, x, y engine.Element, typ ir.Type) (_ engine.Element, err error) {
 	el := &binary{
 		expr: expr,
 		x:    x,
 		y:    y,
+		typ:  typ,
 	}
 	el.core = core{el: el}
 	return el, err
@@ -45,7 +47,7 @@ func NewBinary(env *engine.Env, expr *ir.BinaryExpr, x, y engine.Element) (_ eng
 // NewBinaryFrom returns a new binary operator from a generic receiver.
 // This function is used when converting a constant into a proxy,
 // that is when a binary operator is used between constant and non-constant elements.
-func NewBinaryFrom(env *engine.Env, expr *ir.BinaryExpr, x engine.Element, y ir.Element) (_ engine.Element, err error) {
+func NewBinaryFrom(env *engine.Env, expr *ir.BinaryExpr, x engine.Element, y ir.Element, typ ir.Type) (_ engine.Element, err error) {
 	if y.Type().Kind() == irkind.Unknown {
 		return elements.Unknown(), nil
 	}
@@ -54,7 +56,7 @@ func NewBinaryFrom(env *engine.Env, expr *ir.BinaryExpr, x engine.Element, y ir.
 		from := env.File()
 		return nil, fmterr.InternalAt(from.FileSet(), expr.Src, "operator (%T)%s(%T) not supported for %T in %s", x, expr.Src.Op, y, y, expr.SourceString(from))
 	}
-	return NewBinary(env, expr, x, yEl)
+	return NewBinary(env, expr, x, yEl, typ)
 }
 
 func (a *binary) Value() ir.Expr {
@@ -63,7 +65,7 @@ func (a *binary) Value() ir.Expr {
 
 // Type of the element.
 func (a *binary) Type() ir.Type {
-	return a.expr.Type()
+	return a.typ
 }
 
 func (a *binary) AlgExpr(eva ir.Evaluator) (cmp.Expr, error) {
@@ -96,7 +98,7 @@ func (a *binary) Expr(ev ir.Evaluator, src ast.Expr) ([]ir.Expr, error) {
 		},
 		X:   x,
 		Y:   y,
-		Typ: a.expr.Typ,
+		Typ: a.typ,
 	}}, nil
 }
 

@@ -47,14 +47,14 @@ func (g *genericType) Expr(ir.Evaluator, ast.Expr) ([]ir.Expr, error) {
 }
 
 // UnaryOp applies a unary operator on x.
-func (g *genericType) UnaryOp(env *engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
-	return cpevops.NewUnary(env, expr, g)
+func (g *genericType) UnaryOp(env *engine.Env, expr *ir.UnaryExpr, typ ir.Type) (engine.NumericalElement, error) {
+	return cpevops.NewUnary(env, expr, g, typ)
 }
 
 // BinaryOp applies a binary operator to x and y.
 // Note that the receiver can be either the left or right argument.
-func (g *genericType) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement) (engine.NumericalElement, error) {
-	return cpevops.NewBinaryFrom(env, expr, g, y)
+func (g *genericType) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement, typ ir.Type) (engine.NumericalElement, error) {
+	return cpevops.NewBinaryFrom(env, expr, g, y, typ)
 }
 
 // Cast an element into a given data type.

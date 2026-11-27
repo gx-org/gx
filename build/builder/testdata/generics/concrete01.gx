@@ -14,3 +14,70 @@ func TestUndefAxisBinaryOp() [4]float64 {
 	// Want:
 	// [4]float64{2, 3, 4, 5}
 }
+
+func genericLiteral[T dtype.Floats]() T {
+	return 2.5
+}
+
+func TestGenericNumberCast() (float32, float64) {
+	return genericLiteral[float32](), genericLiteral[float64]()
+	// Want:
+	// 0: float32(2.5)
+	// 1: float64(2.5)
+}
+
+func matmulGeneric[M, K, N int, T dtype.Floats](x [M][K]T, y [K][N]T) [M][N]T {
+	z{i, j} := einsum(x{i, k} * y{k, j})
+	return z
+}
+
+func TestGenericEinsum() [2][2]float32 {
+	a := [2][2]float32{{1, 2}, {3, 4}}
+	b := [2][2]float32{{5, 6}, {7, 8}}
+	return matmulGeneric(a, b)
+	// Want:
+	// [2][2]float32{
+	// 	{19, 22},
+	// 	{43, 50},
+	// }
+}
+
+func negateArray[N int, T dtype.Floats](x [N]T) ([N]T, [N]T) {
+	return -x, -(x + 1)
+}
+
+func TestGenericUnaryOp() ([3]float32, [3]float32) {
+	return negateArray([3]float32{1, -2, 3})
+	// Want:
+	// 0: [3]float32{-1, 2, -3}
+	// 1: [3]float32{-2, 1, -4}
+}
+
+func negateConstScalar[T dtype.Floats]() T {
+	x := genericLiteral[T]()
+	return -x
+}
+
+func TestGenericConstUnaryOp() (float32, float64) {
+	return negateConstScalar[float32](), negateConstScalar[float64]()
+	// Want:
+	// 0: float32(-2.5)
+	// 1: float64(-2.5)
+}
+
+func constSeven[T dtype.Nums]() T {
+	return 7
+}
+
+func divConstGeneric[T dtype.Nums]() T {
+	x := constSeven[T]()
+	return x / 2
+}
+
+func TestGenericConstBinaryOp() (int32, float32, float64) {
+	return divConstGeneric[int32](), divConstGeneric[float32](), divConstGeneric[float64]()
+	// Want:
+	// 0: int32(3)
+	// 1: float32(3.5)
+	// 2: float64(3.5)
+}

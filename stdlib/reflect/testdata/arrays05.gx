@@ -1,6 +1,9 @@
 package arrays05
 
-import "reflect"
+import (
+	"dtype"
+	"reflect"
+)
 
 type Linear[Size int] struct {
 	Weights [Size]float32
@@ -64,5 +67,45 @@ func TestMultiArgGeneric() Layer[2, 3] {
 	// 		{10, 12, 14},
 	// 	},
 	// 	B: [3]float32{4, 6, 8},
+	// }
+}
+
+type Container[T any] struct {
+	Inner T
+}
+
+type Pair struct {
+	A float32
+	B float32
+}
+
+func addGenericType[T any, N dtype.Nums](x T, delta N) T {
+	for _, k := range reflect.Arrays[T, N]() {
+		x[k] += delta
+	}
+	return x
+}
+
+func addGenericContainer[T any](c Container[T], delta float32) Container[T] {
+	for _, k := range reflect.Arrays[Container[T], float32]() {
+		c[k] += delta
+	}
+	return c
+}
+
+func TestGenericTypeParam() (Pair, Container[Pair]) {
+	p := Pair{A: 1, B: 2}
+	c := Container[Pair]{Inner: p}
+	return addGenericType[Pair, float32](p, 10), addGenericContainer[Pair](c, 20)
+	// Want:
+	// 0: Pair{
+	// 	A: float32(11),
+	// 	B: float32(12),
+	// }
+	// 1: Container[Pair]{
+	// 	Inner: Pair{
+	// 		A: float32(21),
+	// 		B: float32(22),
+	// 	},
 	// }
 }

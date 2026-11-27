@@ -512,9 +512,40 @@ var (
 // Kind of the underlying type.
 func (s *NamedType) Kind() irkind.Kind { return s.Underlying.Val().Kind() }
 
-// Refer to the function type.
+func referInFile(from, defFile *File, name *ast.Ident) ast.Expr {
+	if from == nil || defFile == nil || defFile.Package == from.Package {
+		return name
+	}
+	return &ast.SelectorExpr{
+		X:   referPackage(from, defFile.Package, defFile.Package.Name),
+		Sel: name,
+	}
+}
+
+// Refer returns an AST expression referencing the named type from file.
 func (s *NamedType) Refer(file *File) ast.Expr {
-	return s.Src.Name
+	ref := referInFile(file, s.File, s.Src.Name)
+	var args []ast.Expr
+	for _, genericValue := range s.GenParams.Values {
+		if genericValue == nil {
+			continue
+		}
+		args = append(args, genericValue.Value().Refer(file))
+	}
+	switch len(args) {
+	case 0:
+		return ref
+	case 1:
+		return &ast.IndexExpr{
+			X:     ref,
+			Index: args[0],
+		}
+	default:
+		return &ast.IndexListExpr{
+			X:       ref,
+			Indices: args,
+		}
+	}
 }
 
 // Equal returns true if other is the same type.
@@ -793,6 +824,15 @@ func (*SliceType) node() {}
 
 // Kind returns the slide kind.
 func (s *SliceType) Kind() irkind.Kind { return irkind.Slice }
+
+// Refer returns an AST expression referencing the slice type from file.
+func (s *SliceType) Refer(file *File) ast.Expr {
+	elem := s.DType.Val().Refer(file)
+	for range s.Rank {
+		elem = &ast.ArrayType{Elt: elem}
+	}
+	return elem
+}
 
 // Equal returns true if other is the same type.
 func (s *SliceType) Equal(tpcmp TypeEval, other Type) (bool, error) {
@@ -1811,6 +1851,9 @@ func (s *FuncLit) Node() ast.Node { return s.Src }
 // Expr returns the expression AST.
 func (s *FuncLit) Expr() ast.Expr { return s.Src }
 
+// Refer returns an AST expression referencing the function literal.
+func (s *FuncLit) Refer(*File) ast.Expr { return s.Src }
+
 // Annotations returns the annotations attached to the function.
 func (s *FuncLit) Annotations() *annotations.Annotations {
 	return &s.Anns
@@ -2165,6 +2208,8 @@ type (
 		Unroll(Fetcher, Unroller) (ast.Expr, bool)
 		// Expr returns the syntax tree of the expression.
 		Expr() ast.Expr
+		// Refer returns an AST expression referencing the expression from file.
+		Refer(file *File) ast.Expr
 		// Type of the expression.
 		Type() Type
 	}
@@ -2407,6 +2452,9 @@ func (s *NumberFloat) numberExpr() {}
 // Expr returns the expression AST.
 func (s *NumberFloat) Expr() ast.Expr { return s.Src }
 
+// Refer returns an AST expression referencing the float literal.
+func (s *NumberFloat) Refer(*File) ast.Expr { return s.Src }
+
 // Unroll the expression.
 func (s *NumberFloat) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
 	return s.Expr(), true
@@ -2444,6 +2492,9 @@ func (s *NumberInt) numberExpr() {}
 
 // Expr returns the expression AST.
 func (s *NumberInt) Expr() ast.Expr { return s.Src }
+
+// Refer returns an AST expression referencing the integer literal.
+func (s *NumberInt) Refer(*File) ast.Expr { return s.Src }
 
 // Zero returns a zero float number.
 func (s *NumberInt) Zero() Expr {
@@ -2485,6 +2536,9 @@ func (s *NumberCastExpr) Node() ast.Node { return s.X.Node() }
 // Expr returns the expression AST.
 func (s *NumberCastExpr) Expr() ast.Expr { return s.X.Expr() }
 
+// Refer returns an AST expression referencing the cast number from file.
+func (s *NumberCastExpr) Refer(file *File) ast.Expr { return s.X.Refer(file) }
+
 // Unroll the expression.
 func (s *NumberCastExpr) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
 	return s.Expr(), true
@@ -2515,6 +2569,9 @@ func (s *StringLiteral) node() {}
 
 // Expr returns the AST expression.
 func (s *StringLiteral) Expr() ast.Expr { return s.Src }
+
+// Refer returns an AST expression referencing the string literal.
+func (s *StringLiteral) Refer(*File) ast.Expr { return s.Src }
 
 // Unroll the expression.
 func (s *StringLiteral) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
@@ -2549,6 +2606,18 @@ func (s *ArrayLitExpr) Type() Type { return s.Typ }
 
 // Expr returns the AST expression.
 func (s *ArrayLitExpr) Expr() ast.Expr { return s.Src }
+
+// Refer returns an AST expression referencing the array literal from file.
+func (s *ArrayLitExpr) Refer(file *File) ast.Expr {
+	elts := make([]ast.Expr, len(s.Elts))
+	for i, elt := range s.Elts {
+		elts[i] = elt.Refer(file)
+	}
+	return &ast.CompositeLit{
+		Type: s.Typ.Refer(file),
+		Elts: elts,
+	}
+}
 
 // Unroll the expression.
 func (s *ArrayLitExpr) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
@@ -2594,6 +2663,24 @@ func (s *StructLitExpr) Type() Type { return s.Typ }
 
 // Expr returns the AST expression.
 func (s *StructLitExpr) Expr() ast.Expr { return s.Src }
+
+// Refer returns an AST expression referencing the struct literal from file.
+func (s *StructLitExpr) Refer(file *File) ast.Expr {
+	elts := make([]ast.Expr, 0, len(s.Elts))
+	for _, elt := range s.Elts {
+		if elt.X == nil {
+			continue
+		}
+		elts = append(elts, &ast.KeyValueExpr{
+			Key:   elt.NameDef(),
+			Value: elt.X.Refer(file),
+		})
+	}
+	return &ast.CompositeLit{
+		Type: s.Typ.Refer(file),
+		Elts: elts,
+	}
+}
 
 // Unroll the expression.
 func (s *StructLitExpr) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
@@ -2658,6 +2745,14 @@ func (s *UnaryExpr) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
 // Expr returns the expression in the source code.
 func (s *UnaryExpr) Expr() ast.Expr { return s.Src }
 
+// Refer returns an AST expression referencing the unary expression from file.
+func (s *UnaryExpr) Refer(file *File) ast.Expr {
+	return &ast.UnaryExpr{
+		Op: s.Src.Op,
+		X:  s.X.Refer(file),
+	}
+}
+
 // SourceString returns the GX source code of the expression.
 func (s *UnaryExpr) SourceString(from *File) string {
 	return s.Src.Op.String() + s.X.SourceString(from)
@@ -2681,6 +2776,13 @@ func (s *ParenExpr) Type() Type { return s.X.Type() }
 
 // Expr returns the expression in the source code.
 func (s *ParenExpr) Expr() ast.Expr { return s.Src }
+
+// Refer returns an AST expression referencing the parenthesized expression from file.
+func (s *ParenExpr) Refer(file *File) ast.Expr {
+	return &ast.ParenExpr{
+		X: s.X.Refer(file),
+	}
+}
 
 // Unroll the expression.
 func (s *ParenExpr) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
@@ -2720,6 +2822,15 @@ func (s *BinaryExpr) Type() Type { return s.Typ }
 
 // Expr returns the expression in the source code.
 func (s *BinaryExpr) Expr() ast.Expr { return s.Src }
+
+// Refer returns an AST expression referencing the binary expression from file.
+func (s *BinaryExpr) Refer(file *File) ast.Expr {
+	return &ast.BinaryExpr{
+		Op: s.Src.Op,
+		X:  s.X.Refer(file),
+		Y:  s.Y.Refer(file),
+	}
+}
 
 // Unroll the expression.
 func (s *BinaryExpr) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
@@ -2780,6 +2891,9 @@ func (s *TypeValExpr) Node() ast.Node { return s.Expr() }
 
 // Expr returns the AST expression.
 func (s *TypeValExpr) Expr() ast.Expr { return s.src }
+
+// Refer returns an AST expression referencing the type from file.
+func (s *TypeValExpr) Refer(file *File) ast.Expr { return s.val.Refer(file) }
 
 // Unroll the expression.
 func (s *TypeValExpr) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
@@ -2866,6 +2980,9 @@ func (s *FuncValExpr) Node() ast.Node { return s.Expr() }
 
 // Expr returns the AST expression.
 func (s *FuncValExpr) Expr() ast.Expr { return s.x.Expr() }
+
+// Refer returns an AST expression referencing the function value from file.
+func (s *FuncValExpr) Refer(file *File) ast.Expr { return s.x.Refer(file) }
 
 // Func returns the function being called.
 func (s *FuncValExpr) Func() Func {
@@ -2965,6 +3082,18 @@ func (s *FuncCallExpr) FuncCall() *FuncCallExpr {
 // Expr returns the expression in the source code.
 func (s *FuncCallExpr) Expr() ast.Expr { return s.Src }
 
+// Refer returns an AST expression referencing the function call from file.
+func (s *FuncCallExpr) Refer(file *File) ast.Expr {
+	args := make([]ast.Expr, len(s.Args))
+	for i, arg := range s.Args {
+		args[i] = arg.Refer(file)
+	}
+	return &ast.CallExpr{
+		Fun:  s.Callee.Refer(file),
+		Args: args,
+	}
+}
+
 // ExprFromResult returns an expression pointing to the ith result of a function call.
 func (s *FuncCallExpr) ExprFromResult(i int) *CallResultExpr {
 	return &CallResultExpr{
@@ -3035,6 +3164,9 @@ func (s *CallResultExpr) Type() Type {
 // Expr returns the expression in the source code.
 func (s *CallResultExpr) Expr() ast.Expr { return s.Call.Expr() }
 
+// Refer returns an AST expression referencing the call result from file.
+func (s *CallResultExpr) Refer(file *File) ast.Expr { return s.Call.Refer(file) }
+
 // Unroll the expression.
 func (s *CallResultExpr) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
 	return s.Call.Unroll(ev, urlr)
@@ -3060,6 +3192,14 @@ func (s *CastExpr) Type() Type { return s.Typ }
 
 // Expr returns the expression in the source code.
 func (s *CastExpr) Expr() ast.Expr { return s.Src }
+
+// Refer returns an AST expression referencing the cast expression from file.
+func (s *CastExpr) Refer(file *File) ast.Expr {
+	return &ast.CallExpr{
+		Fun:  s.Typ.Refer(file),
+		Args: []ast.Expr{s.X.Refer(file)},
+	}
+}
 
 // Unroll the expression.
 func (s *CastExpr) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
@@ -3106,6 +3246,14 @@ func (s *TypeAssertExpr) Type() Type { return s.Typ }
 
 // Expr returns the expression in the source code.
 func (s *TypeAssertExpr) Expr() ast.Expr { return s.Src }
+
+// Refer returns an AST expression referencing the type assertion from file.
+func (s *TypeAssertExpr) Refer(file *File) ast.Expr {
+	return &ast.TypeAssertExpr{
+		Type: s.Typ.Refer(file),
+		X:    s.X.Refer(file),
+	}
+}
 
 // Unroll the expression.
 func (s *TypeAssertExpr) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
@@ -3197,6 +3345,17 @@ func (s *Ident) Type() Type { return s.Stor.Type() }
 // Expr returns the expression in the source code.
 func (s *Ident) Expr() ast.Expr { return s.Src }
 
+// Refer returns an AST expression referencing the identifier from file.
+func (s *Ident) Refer(file *File) ast.Expr {
+	switch stor := s.Stor.(type) {
+	case StorageWithFile:
+		return referInFile(file, stor.File(), s.Src)
+	case *ImportDecl:
+		return referPackage(file, stor.Package, s.Src)
+	}
+	return s.Src
+}
+
 // Store returns the storage referenced by this expression.
 func (s *Ident) Store() Storage { return s.Stor }
 
@@ -3246,6 +3405,11 @@ func (s *PackageRef) Node() ast.Node { return s.Expr() }
 
 // Expr returns the AST expression.
 func (s *PackageRef) Expr() ast.Expr { return s.X.Expr() }
+
+// Refer returns an AST expression referencing the package from file.
+func (s *PackageRef) Refer(file *File) ast.Expr {
+	return referPackage(file, s.Decl.Package, s.X.Src)
+}
 
 // Unroll the expression.
 func (s *PackageRef) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
@@ -3320,6 +3484,31 @@ func (s *SelectorExpr) Type() Type { return s.Stor.Type() }
 
 // Expr returns the AST expression.
 func (s *SelectorExpr) Expr() ast.Expr { return s.Src }
+
+func referredPackage(x Expr) *Package {
+	switch x := x.(type) {
+	case *ImportEmbedded:
+		return x.Package
+	case *PackageRef:
+		return x.Decl.Package
+	case *Ident:
+		if imp, ok := x.Stor.(*ImportDecl); ok {
+			return imp.Package
+		}
+	}
+	return nil
+}
+
+// Refer returns an AST expression referencing the selector expression from file.
+func (s *SelectorExpr) Refer(file *File) ast.Expr {
+	if pkg := referredPackage(s.X); file != nil && pkg != nil && pkg == file.Package {
+		return s.Src.Sel
+	}
+	return &ast.SelectorExpr{
+		X:   s.X.Refer(file),
+		Sel: s.Src.Sel,
+	}
+}
 
 // Select finds a method on a named type or a field in a structure.
 func (s *SelectorExpr) Select(typ Type) (method PkgFunc, field *Field) {
@@ -3418,6 +3607,14 @@ func (s *IndexExpr) Type() Type { return s.Typ }
 // Expr returns the AST expression.
 func (s *IndexExpr) Expr() ast.Expr { return s.Src }
 
+// Refer returns an AST expression referencing the index expression from file.
+func (s *IndexExpr) Refer(file *File) ast.Expr {
+	return &ast.IndexExpr{
+		X:     s.X.Refer(file),
+		Index: s.Index.Refer(file),
+	}
+}
+
 // Unroll the expression.
 func (s *IndexExpr) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
 	return urlr.SubstituteIndex(ev, s)
@@ -3464,6 +3661,14 @@ func (s *SpecTypeExpr) Type() Type { return s.Typ }
 // Expr returns the AST expression.
 func (s *SpecTypeExpr) Expr() ast.Expr { return s.Src }
 
+// Refer returns an AST expression referencing the specialized type expression from file.
+func (s *SpecTypeExpr) Refer(file *File) ast.Expr {
+	return &ast.IndexExpr{
+		X:     s.X.Refer(file),
+		Index: s.Index.Refer(file),
+	}
+}
+
 // Unroll the expression.
 func (s *SpecTypeExpr) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
 	return s.Src, true
@@ -3501,6 +3706,14 @@ func (s *IndexListExpr) Type() Type { return s.Typ }
 // Expr returns the AST expression.
 func (s *IndexListExpr) Expr() ast.Expr { return s.Src }
 
+// Refer returns an AST expression referencing the index-list expression from file.
+func (s *IndexListExpr) Refer(file *File) ast.Expr {
+	return &ast.IndexListExpr{
+		X:       s.X.Refer(file),
+		Indices: []ast.Expr{s.Indices.Refer(file)},
+	}
+}
+
 // Unroll the expression.
 func (s *IndexListExpr) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {
 	x, xOk := s.X.Unroll(ev, urlr)
@@ -3535,6 +3748,9 @@ func (s *EinsumExpr) Type() Type { return s.Typ }
 
 // Expr returns the expression in the source code.
 func (s *EinsumExpr) Expr() ast.Expr { return s.Src }
+
+// Refer returns an AST expression referencing the einsum expression.
+func (s *EinsumExpr) Refer(*File) ast.Expr { return s.Src }
 
 // Unroll the expression.
 func (s *EinsumExpr) Unroll(ev Fetcher, urlr Unroller) (ast.Expr, bool) {

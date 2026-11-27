@@ -70,7 +70,7 @@ func (n *structType) buildTypeExpr(scope resolveScope) (*ir.TypeValExpr, bool) {
 	stypeScope := newDefineScope(ephemeral, nil)
 	var fieldsOk bool
 	ext.Fields, fieldsOk = n.fieldList.buildFieldList(stypeScope)
-	return ir.TypeExpr(nil, ext), fieldsOk && ephemeralOk
+	return ir.TypeExpr(n.src, ext), fieldsOk && ephemeralOk
 }
 
 func (n *structType) String() string {

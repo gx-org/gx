@@ -92,8 +92,8 @@ func (a *array) Length(ev ir.Evaluator) (int, error) {
 }
 
 // UnaryOp applies a unary operator on x.
-func (a *array) UnaryOp(env *engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
-	return cpevops.NewUnary(env, expr, a)
+func (a *array) UnaryOp(env *engine.Env, expr *ir.UnaryExpr, typ ir.Type) (engine.NumericalElement, error) {
+	return cpevops.NewUnary(env, expr, a, typ)
 }
 
 func (a *array) Axes(ev ir.Evaluator) (ir.FixedSlice, error) {
@@ -101,8 +101,8 @@ func (a *array) Axes(ev ir.Evaluator) (ir.FixedSlice, error) {
 }
 
 // BinaryOp applies a binary operator to x and y.
-func (a *array) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement) (engine.NumericalElement, error) {
-	return cpevops.NewBinaryFrom(env, expr, a, y)
+func (a *array) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement, typ ir.Type) (engine.NumericalElement, error) {
+	return cpevops.NewBinaryFrom(env, expr, a, y, typ)
 }
 
 // Cast an element into a given data type.

@@ -1,0 +1,31 @@
+package fpath09
+
+import "testfieldpaths"
+
+type S[T any] struct {
+	s T
+}
+
+type AB struct {
+	a float32
+	b float32
+}
+
+func New[T any]() S[T] {
+	s := S[T]{}
+	for _, k := range testfieldpaths.Path[S[T], float32]("s", "a") {
+		s[k] = 1.0
+	}
+	return s
+}
+
+func Test() S[AB] {
+	return New[AB]()
+	// Want:
+	// S[AB]{
+	// 	s: AB{
+	// 		a: float32(1),
+	// 		b: float32(0),
+	// 	},
+	// }
+}

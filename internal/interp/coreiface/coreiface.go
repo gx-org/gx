@@ -27,6 +27,11 @@ type Under interface {
 	Under() (ir.Element, error)
 }
 
+// Finalizer releases resources.
+type Finalizer interface {
+	Finalize() error
+}
+
 // IndexSetter sets a value at an index.
 type IndexSetter interface {
 	ir.Element

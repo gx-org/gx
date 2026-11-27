@@ -115,3 +115,126 @@ func Build(dev *core.DeviceSetup) (*PackageHandle, error) {
 
 	return &pkg.handle, err
 }
+
+// handleUseS stores the backend handles of UseS.
+type handleUseS struct {
+	pkg   *Package
+	struc *ir.NamedType
+	owner *UseS
+}
+
+// Type of the value.
+func (h *handleUseS) Type() ir.Type {
+	return h.struc
+}
+
+// NamedType returns the intermediate representation of the type.
+func (h *handleUseS) NamedType() *ir.NamedType {
+	return h.struc
+}
+
+// Bridger returns the Go object owning this handle.
+func (h *handleUseS) Bridger() types.Bridger {
+	return h.owner
+}
+
+// GXValue returns the GX value.
+func (h *handleUseS) GXValue() hostio.Value {
+	return h.owner.value
+}
+
+// String representation of the handle.
+func (h *handleUseS) String() string {
+	bld := strings.Builder{}
+	bld.WriteString("UseS{\n")
+
+	bld.WriteString("}")
+	return bld.String()
+}
+
+// UseS stores the handle of UseS on a device.
+type UseS struct {
+	handle handleUseS
+	value  *elements.NamedType
+}
+
+var (
+	_ types.Bridger      = (*UseS)(nil)
+	_ types.StructBridge = (*handleUseS)(nil)
+)
+
+// StructValue returns the GX value of the structure.
+func (h *handleUseS) StructValue() *elements.Struct {
+	return h.owner.value.Underlying().(*elements.Struct)
+}
+
+// MarshalUseS populates the receiver fields with device handles.
+func (fty *Factory) MarshalUseS(val hostio.Value) (s *UseS, err error) {
+	s = fty.NewUseS()
+	var ok bool
+	s.value, ok = val.(*elements.NamedType)
+	if !ok {
+		err = errors.Errorf("cannot use handle to set UseS: %T is not a %s", val, reflect.TypeFor[*elements.NamedType]())
+		return
+	}
+	structVal, ok := s.value.Underlying().(*elements.Struct)
+	if !ok {
+		err = errors.Errorf("incorrect underlying value for named type UseS: %T is not a %s", val, reflect.TypeFor[*elements.Struct]().Name())
+		return
+	}
+	fields := make([]hostio.Value, structVal.StructType().NumFields())
+	for i, field := range structVal.StructType().Fields.Fields() {
+		fieldElement := structVal.FieldValue(field.Name.Name)
+		fields[i], ok = fieldElement.(hostio.Value)
+		if !ok {
+			err = errors.Errorf("cannot use field %s of type %T: not a GX value", field.Name.Name, fieldElement)
+			return
+		}
+	}
+
+	return
+}
+
+func (s UseS) String() string {
+	return s.handle.String()
+}
+
+// Bridge returns the bridge between the Go value and the GX value.
+func (s *UseS) Bridge() types.Bridge { return &s.handle }
+
+// NewUseS returns a handle on named type UseS.
+func (fac *Factory) NewUseS() *UseS {
+	s := &UseS{}
+	typ := fac.Package.handle.IR().Decls.TypeByName("UseS")
+	s.handle = handleUseS{
+		pkg:   fac.Package,
+		struc: typ,
+		owner: s,
+	}
+
+	structVal, err := elements.NewStruct(ir.Underlying(typ).(*ir.StructType), nil)
+	if err != nil {
+		panic(err)
+	}
+	s.value = elements.NewNamedType(typ, structVal)
+
+	return s
+}
+
+var _ types.Bridge = (*handleUseS)(nil)
+
+func (h *handleUseS) NewFromField(field *ir.Field) (types.Bridge, error) {
+	name := field.Name.Name
+	switch name {
+
+	default:
+		return nil, errors.Errorf("structure UseS has no field %q", name)
+	}
+}
+
+// SetField sets a field in the structure.
+func (h *handleUseS) SetField(field *ir.Field, val types.Bridge) error {
+
+	return errors.Errorf("type UseS has no field")
+
+}

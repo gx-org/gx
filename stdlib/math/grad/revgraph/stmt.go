@@ -149,7 +149,7 @@ func (n *returnStmt) buildVJPBodyWRTStruct(outWRT *astOutWRTStruct) (*special.Ex
 	whole := outWRT.add(allWhole...)
 	fields := outWRT.wrtStruct.Fields()
 	ext := &ast.CompositeLit{
-		Type: outWRT.wrtStruct.Type().NameDef(),
+		Type: outWRT.wrtStruct.Type().Refer(n.graph.fn.File()),
 		Elts: make([]ast.Expr, len(fields)),
 	}
 	for i, field := range fields {

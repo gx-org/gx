@@ -93,12 +93,12 @@ func (s *IRNode) same(other ir.Element) bool {
 }
 
 // UnaryOp is not supported for IR nodes and returns an error.
-func (s *IRNode) UnaryOp(env *engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
+func (s *IRNode) UnaryOp(env *engine.Env, expr *ir.UnaryExpr, typ ir.Type) (engine.NumericalElement, error) {
 	return nil, fmterr.Internalf("UnaryOp not supported on IR node %s", s.SourceString(nil))
 }
 
 // BinaryOp is not supported for IR nodes and returns an error.
-func (s *IRNode) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement) (engine.NumericalElement, error) {
+func (s *IRNode) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement, typ ir.Type) (engine.NumericalElement, error) {
 	return nil, fmterr.Internalf("BinaryOp not supported on IR node %s", s.SourceString(nil))
 }
 

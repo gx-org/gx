@@ -59,6 +59,18 @@ func (s *SliceLitExpr) Type() Type { return s.Typ }
 // Expr returns the AST expression.
 func (s *SliceLitExpr) Expr() ast.Expr { return s.Src }
 
+// Refer returns an AST expression referencing the slice literal from file.
+func (s *SliceLitExpr) Refer(file *File) ast.Expr {
+	elts := make([]ast.Expr, len(s.Elts))
+	for i, elt := range s.Elts {
+		elts[i] = elt.Refer(file)
+	}
+	return &ast.CompositeLit{
+		Type: s.Typ.Refer(file),
+		Elts: elts,
+	}
+}
+
 // Unpack the slice literal expressions.
 func (s *SliceLitExpr) Unpack() []Expr { return s.Elts }
 
@@ -135,6 +147,22 @@ func (s *SliceExpr) Type() Type { return s.X.Type() }
 
 // Expr returns the AST expression.
 func (s *SliceExpr) Expr() ast.Expr { return s.Src }
+
+// Refer returns an AST expression referencing the slice expression from file.
+func (s *SliceExpr) Refer(file *File) ast.Expr {
+	var low, high ast.Expr
+	if s.Low != nil {
+		low = s.Low.Refer(file)
+	}
+	if s.High != nil {
+		high = s.High.Refer(file)
+	}
+	return &ast.SliceExpr{
+		X:    s.X.Refer(file),
+		Low:  low,
+		High: high,
+	}
+}
 
 // SourceString returns the GX source code of the node.
 func (s *SliceExpr) SourceString(from *File) string {

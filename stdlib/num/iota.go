@@ -65,7 +65,7 @@ func evalIotaFull(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genAr
 	gr := env.Engine().Graph()
 	iotaOp, err := gr.Iota(shapes.Shape{
 		DType:      targetShape.DType,
-		Dimensions: []int{targetShape.Size()},
+		Dimensions: []int{targetShape.DynamicSize()},
 	}, 0)
 	if err != nil {
 		return nil, err

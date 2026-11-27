@@ -70,7 +70,7 @@ func splitAxis(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs,
 		X:   splitAxisExpr,
 		Y:   numSplitExpr,
 		Typ: ir.IntType(),
-	}, numSplit)
+	}, numSplit, ir.IntType())
 	if err != nil {
 		return nil, err
 	}

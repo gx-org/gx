@@ -61,8 +61,8 @@ func (n *elInt) CmpOp(env ir.SourceFile, expr *ir.BinaryExpr, y engine.ScalarNum
 
 // BinaryOp applies a binary operator to x and y.
 // Note that the receiver can be either the left or right argument.
-func (n *elInt) BinaryOp(env ir.SourceFile, expr *ir.BinaryExpr, yEl engine.ScalarNumber) (engine.ScalarNumber, error) {
-	if ir.IsFloat(expr.Type()) {
+func (n *elInt) BinaryOp(env ir.SourceFile, expr *ir.BinaryExpr, yEl engine.ScalarNumber, typ ir.Type) (engine.ScalarNumber, error) {
+	if ir.IsFloat(typ) {
 		// The operation has a float type (e.g. float32(7)/2):
 		// use float arithmetic even if both operands are integer numbers.
 		return binaryFloat(env, expr, n.Float(), yEl.Float())
@@ -113,8 +113,8 @@ func (n *elInt) Float() *big.Float {
 }
 
 // Cast an element into a given data type.
-func (n *elInt) Cast(expr *ir.NumberCastExpr) engine.Constant {
-	return constants.NewScalar(expr.Type(), n)
+func (n *elInt) Cast(target ir.Type) engine.Constant {
+	return constants.NewScalar(target, n)
 }
 
 // Expr returns the expression representing the integer.

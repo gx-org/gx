@@ -22,7 +22,8 @@ import (
 // MacroCall is a helper structure to implement macros.
 type MacroCall struct {
 	mac  *ir.Macro
-	call CallAt
+	file *ir.File
+	call *ir.FuncCallExpr
 }
 
 var _ ir.MacroElement = (*MacroCall)(nil)
@@ -31,7 +32,8 @@ var _ ir.MacroElement = (*MacroCall)(nil)
 func NewMacroCall(mac *ir.Macro, file *ir.File, call *ir.FuncCallExpr) MacroCall {
 	return MacroCall{
 		mac:  mac,
-		call: NewNodeAt(file, call),
+		file: file,
+		call: call,
 	}
 }
 
@@ -46,16 +48,21 @@ func (m *MacroCall) From() *ir.Macro {
 }
 
 // Call returns the source call from where the element was created.
-func (m *MacroCall) Call() CallAt {
+func (m *MacroCall) Call() *ir.FuncCallExpr {
 	return m.call
+}
+
+// CallFile returns the file containing the macro call.
+func (m *MacroCall) CallFile() *ir.File {
+	return m.file
 }
 
 // Source returns the source call from where the element was created.
 func (m *MacroCall) Source() ast.Node {
-	return m.call.Source()
+	return m.call.Node()
 }
 
 // SourceString returns a string representation of the macro call.
 func (m *MacroCall) SourceString(from *ir.File) string {
-	return m.call.Node().SourceString(from)
+	return m.call.SourceString(from)
 }

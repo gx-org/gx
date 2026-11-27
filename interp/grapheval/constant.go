@@ -23,7 +23,6 @@ import (
 	"github.com/gx-org/gx/internal/concrete"
 	"github.com/gx-org/gx/internal/interp/compeval/cmp"
 	"github.com/gx-org/gx/internal/interp/csteager"
-	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/internal/togo"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
@@ -82,7 +81,7 @@ func (n *constant) Constant() engine.Constant {
 }
 
 // Unflatten creates a GX value from the next handles available in the parser.
-func (n *constant) Unflatten(handles *flatten.Parser) (hostio.Value, error) {
+func (n *constant) Unflatten(handles hostio.Parser) (hostio.Value, error) {
 	return hostio.NewDeviceArray(n.ctyp, handles.Next())
 }
 
@@ -100,25 +99,25 @@ func (n *constant) Axes(ev ir.Evaluator) (ir.FixedSlice, error) {
 }
 
 // UnaryOp applies an unary operator to x.
-func (n *constant) UnaryOp(env *engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
-	res, err := csteager.Unary(env, expr, n.cst)
+func (n *constant) UnaryOp(env *engine.Env, expr *ir.UnaryExpr, typ ir.Type) (engine.NumericalElement, error) {
+	res, err := csteager.Unary(env, expr, typ, n.cst)
 	if err != nil {
 		return nil, err
 	}
 	if res == nil {
-		return n.BackendNode.UnaryOp(env, expr)
+		return n.BackendNode.UnaryOp(env, expr, typ)
 	}
 	return newConstant(env.ExprEval(), n.ao, res)
 }
 
 // BinaryOp applies a binary operator to x and y.
-func (n *constant) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement) (engine.NumericalElement, error) {
-	res, err := csteager.Binary(env, expr, n.cst, y)
+func (n *constant) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement, typ ir.Type) (engine.NumericalElement, error) {
+	res, err := csteager.Binary(env, expr, typ, n.cst, y)
 	if err != nil {
 		return nil, err
 	}
 	if res == nil {
-		return n.BackendNode.BinaryOp(env, expr, y)
+		return n.BackendNode.BinaryOp(env, expr, y, typ)
 	}
 	return newConstant(env.ExprEval(), n.ao, res)
 }

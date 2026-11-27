@@ -16,6 +16,7 @@
 package eagereval
 
 import (
+	"fmt"
 	"unsafe"
 
 	"github.com/pkg/errors"
@@ -97,7 +98,7 @@ func (ao *Ops) toElement(ev ir.Evaluator, val compute.Value, tp ir.Type) (Numeri
 }
 
 // Einsum calls an einstein sum on x and y given the expression in ref.
-func (ao *Ops) Einsum(ev ir.Evaluator, ref *ir.EinsumExpr, x, y engine.NumericalElement) (engine.NumericalElement, error) {
+func (ao *Ops) Einsum(ev ir.Evaluator, ref *ir.EinsumExpr, x, y engine.NumericalElement, typ ir.Type) (engine.NumericalElement, error) {
 	xNode, err := materialise.Element(ao, x)
 	if err != nil {
 		return nil, err
@@ -110,7 +111,7 @@ func (ao *Ops) Einsum(ev ir.Evaluator, ref *ir.EinsumExpr, x, y engine.Numerical
 	if err != nil {
 		return nil, err
 	}
-	return ao.toElement(ev, dotNode, ref.Typ)
+	return ao.toElement(ev, dotNode, typ)
 }
 
 func elementsToInt(els []engine.NumericalElement) ([]int, error) {
@@ -261,7 +262,8 @@ func (ao *Ops) ElementsFromNodes(ev ir.Evaluator, nodes []compute.Value, types [
 
 type constant struct {
 	NumericalNode
-	cst engine.Constant
+	cst  engine.Constant
+	ctyp ir.Type
 }
 
 var (
@@ -270,6 +272,10 @@ var (
 	_ togo.CompileValue               = (*constant)(nil)
 	_ materialise.ElementMaterialiser = (*constant)(nil)
 )
+
+func (c *constant) Type() ir.Type {
+	return c.ctyp
+}
 
 // GoValue of the underlying element.
 func (c *constant) GoValue() (any, error) {
@@ -317,7 +323,7 @@ func (ao *Ops) ElementFromHostValue(ev ir.Evaluator, cst engine.Constant) (engin
 	if err != nil {
 		return nil, err
 	}
-	return &constant{NumericalNode: el, cst: cst}, nil
+	return &constant{NumericalNode: el, cst: cst, ctyp: ctyp}, nil
 }
 
 // DefineGlobalConst defines a global constant for the interpreter.
@@ -345,18 +351,149 @@ func (ao *Ops) axesFromShape(ctx ir.Evaluator, axlens []int) (*elements.Slice, e
 	return elements.NewSlice(ir.IntSliceType(), axes)
 }
 
-func (ao *Ops) elementFromValue(ev ir.Evaluator, val hostio.Value) (ir.Element, error) {
-	return ao.toElement(ev, val, val.Type())
+func checkCompositeChildren(tev ir.TypeEval, name string, el ir.Element) error {
+	switch elT := el.(type) {
+	case *elements.NamedType:
+		under, err := elT.Under()
+		if err != nil {
+			return err
+		}
+		valNamed, err := cast.To[*ir.NamedType](elT.Type())
+		if err != nil {
+			return err
+		}
+		return checkElement(tev, name, valNamed.Underlying.Val(), under)
+	case *elements.Struct:
+		for _, field := range elT.StructType().Fields.Fields() {
+			fieldName := field.Name.Name
+			childName := fieldName
+			if name != "" {
+				childName = name + "." + fieldName
+			}
+			if err := checkElement(tev, childName, field.Type(), elT.FieldValue(fieldName)); err != nil {
+				return err
+			}
+		}
+	case *elements.Slice:
+		sliceType, err := cast.To[*ir.SliceType](ir.Underlying(elT.Type()))
+		if err != nil {
+			return err
+		}
+		elementType, ok := sliceType.ElementType()
+		if !ok {
+			return fmterr.Internalf("cannot get element type of %s", elT.Type().ReferString(tev.File()))
+		}
+		for i, item := range elT.Elements() {
+			if err := checkElement(tev, fmt.Sprintf("%s[%d]", name, i), elementType, item); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func checkElement(tev ir.TypeEval, name string, want ir.Type, el ir.Element) error {
+	if el == nil {
+		return hostio.InputTypeError(name, want, nil)
+	}
+	if tp, ok := want.(*ir.GenericTypeParam); ok {
+		var err error
+		if want, err = concrete.Concrete(tev, tp); err != nil {
+			return err
+		}
+	}
+	if ir.IsUnknown(el.Type()) {
+		switch ir.Underlying(want).(type) {
+		case *ir.StructType, *ir.SliceType:
+			return hostio.InputTypeError(name, want, el)
+		}
+		return nil
+	}
+	ok, err := ir.AssignableTo(tev, el.Type(), want)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return hostio.InputTypeError(name, want, el)
+	}
+	return checkCompositeChildren(tev, name, el)
+}
+
+func mapValue(val hostio.Value, fn func(hostio.Value) (hostio.Value, error)) (hostio.Value, error) {
+	switch valT := val.(type) {
+	case *elements.NamedType:
+		under, err := valT.Under()
+		if err != nil {
+			return nil, err
+		}
+		underVal, err := cast.To[hostio.Value](under)
+		if err != nil {
+			return nil, err
+		}
+		mapped, err := mapValue(underVal, fn)
+		if err != nil {
+			return nil, err
+		}
+		return elements.NewNamedType(valT.TypeMethods(), mapped), nil
+	case *elements.Struct:
+		fields := valT.StructType().Fields.Fields()
+		els := make([]ir.Element, len(fields))
+		for i, field := range fields {
+			fieldVal, err := cast.To[hostio.Value](valT.FieldValue(field.Name.Name))
+			if err != nil {
+				return nil, err
+			}
+			if els[i], err = mapValue(fieldVal, fn); err != nil {
+				return nil, err
+			}
+		}
+		return elements.NewStructFromElements(valT.StructType(), els)
+	case *elements.Slice:
+		src := valT.Elements()
+		els := make([]ir.Element, len(src))
+		for i, el := range src {
+			elVal, err := cast.To[hostio.Value](el)
+			if err != nil {
+				return nil, err
+			}
+			if els[i], err = mapValue(elVal, fn); err != nil {
+				return nil, err
+			}
+		}
+		return elements.NewSlice(valT.Type(), els)
+	default:
+		return fn(val)
+	}
+}
+
+func (ao *Ops) elementFromValue(ev ir.Evaluator, field *ir.Field, val hostio.Value) (ir.Element, error) {
+	tev, err := cast.To[ir.TypeEval](ev)
+	if err != nil {
+		return nil, err
+	}
+	name := ""
+	if field.Name != nil {
+		name = field.Name.Name
+	}
+	if err := checkCompositeChildren(tev, name, val); err != nil {
+		return nil, err
+	}
+	return mapValue(val, func(leaf hostio.Value) (hostio.Value, error) {
+		if arr, ok := leaf.(*hostio.HostArray); ok {
+			return ao.nodeFromArray(arr, arr.Type())
+		}
+		return ao.toElement(ev, leaf, leaf.Type())
+	})
 }
 
 // ElementFromReceiverValue converts a function receiver value into an element.
-func (ao *Ops) ElementFromReceiverValue(ev ir.Evaluator, _ *ir.Field, val hostio.Value) (ir.Element, error) {
-	return ao.elementFromValue(ev, val)
+func (ao *Ops) ElementFromReceiverValue(ev ir.Evaluator, field *ir.Field, val hostio.Value) (ir.Element, error) {
+	return ao.elementFromValue(ev, field, val)
 }
 
 // ElementFromArgValue converts a function argument value into an element.
-func (ao *Ops) ElementFromArgValue(ev ir.Evaluator, _ *ir.Field, _ int, val hostio.Value) (ir.Element, error) {
-	return ao.elementFromValue(ev, val)
+func (ao *Ops) ElementFromArgValue(ev ir.Evaluator, field *ir.Field, _ int, val hostio.Value) (ir.Element, error) {
+	return ao.elementFromValue(ev, field, val)
 }
 
 // Values returns the GX values computed by the backend for elements.
@@ -374,10 +511,14 @@ func (ao *Ops) Values(els []ir.Element) ([]hostio.Value, error) {
 		return nil, err
 	}
 	for i, val := range vals {
-		if _, ok := val.(engine.ConstantElement); ok {
-			if vals[i], err = togo.CpValueT[hostio.Value](val); err != nil {
-				return nil, err
+		vals[i], err = mapValue(val, func(leaf hostio.Value) (hostio.Value, error) {
+			if _, ok := leaf.(engine.ConstantElement); ok {
+				return togo.CpValueT[hostio.Value](leaf)
 			}
+			return leaf, nil
+		})
+		if err != nil {
+			return nil, err
 		}
 	}
 	return vals, nil

@@ -31,9 +31,12 @@ func (*VarArgsType) node()         {}
 func (*VarArgsType) storage()      {}
 func (*VarArgsType) storageValue() {}
 
-// Refer to the type.
+// Refer returns an AST expression referencing the varargs type from file.
 func (tp *VarArgsType) Refer(file *File) ast.Expr {
-	return tp.Src
+	return &ast.Ellipsis{
+		Ellipsis: 1,
+		Elt:      tp.Typ.DType.Val().Refer(file),
+	}
 }
 
 // Node returns the node in the AST tree.
@@ -154,6 +157,11 @@ func (expr *VarArgsExpr) Expr() ast.Expr {
 	return expr.Elt.Src
 }
 
+// Refer returns an AST expression referencing the varargs type expression from file.
+func (expr *VarArgsExpr) Refer(file *File) ast.Expr {
+	return expr.Elt.Refer(file)
+}
+
 // Type returns the type of the expression.
 func (expr *VarArgsExpr) Type() Type {
 	return expr.Elt.Type()
@@ -232,6 +240,11 @@ func (s *VarArgsIndex) UnifyWith(uni Unifier, targets []AxisLengths) ([]AxisLeng
 // Expr returns the syntax tree of the expression.
 func (s *VarArgsIndex) Expr() ast.Expr {
 	return s.X.Expr()
+}
+
+// Refer returns an AST expression referencing the indexed varargs expression from file.
+func (s *VarArgsIndex) Refer(file *File) ast.Expr {
+	return s.X.Refer(file)
 }
 
 // Type of the expression.

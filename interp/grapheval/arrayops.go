@@ -22,7 +22,6 @@ import (
 	"github.com/gomlx/compute/dtypes"
 	"github.com/gomlx/compute/shapes"
 	"github.com/gx-org/gx/api/hostio"
-	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/concrete"
 	"github.com/gx-org/gx/internal/interp/constants"
@@ -60,7 +59,7 @@ func (ao *Ops) SubGraph(name string) (engine.Engine, error) {
 }
 
 // Einsum calls an einstein sum on x and y given the expression in ref.
-func (ao *Ops) Einsum(ev ir.Evaluator, ref *ir.EinsumExpr, x, y engine.NumericalElement) (engine.NumericalElement, error) {
+func (ao *Ops) Einsum(ev ir.Evaluator, ref *ir.EinsumExpr, x, y engine.NumericalElement, typ ir.Type) (engine.NumericalElement, error) {
 	xNode, err := materialise.Element(ao, x)
 	if err != nil {
 		return nil, err
@@ -72,10 +71,6 @@ func (ao *Ops) Einsum(ev ir.Evaluator, ref *ir.EinsumExpr, x, y engine.Numerical
 	dotNode, err := ao.graph.DotGeneral(xNode, ref.ReduceAxes[0], ref.BatchAxes[0], yNode, ref.ReduceAxes[1], ref.BatchAxes[1], compute.DotGeneralConfig{})
 	if err != nil {
 		return nil, err
-	}
-	typ, err := concrete.Concrete(ev, ref.Typ)
-	if err != nil {
-		return nil, fmterr.Error(ev.File().FileSet(), ref.Src, err)
 	}
 	return NewBackendNode(ao, typ, dotNode)
 }

@@ -254,7 +254,7 @@ func (n *funcType) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
 	if !ok {
 		return nil, false
 	}
-	return ir.TypeExpr(nil, tp), true
+	return ir.TypeExpr(n.src, tp), true
 }
 
 func (n *funcType) String() string {

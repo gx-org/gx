@@ -150,14 +150,14 @@ func (g *CompiledFunc) Run(receiver hostio.Value, args []hostio.Value, tracer tr
 			_ = b.Finalize()
 		}
 	}()
-	if err := g.process.ProcessTraces(g.device.PlatformDevice(), fc, tracer, traced); err != nil {
+	if err := processor.ProcessTraces(g.process, tracer, traced); err != nil {
 		return nil, err
 	}
-	return g.handlesToValues(fc, out)
+	return g.handlesToValues(out)
 }
 
-func (g *CompiledFunc) handlesToValues(in *togo.FuncInputs, handles []compute.Buffer) ([]hostio.Value, error) {
-	reader := flatten.NewParser(g.device.PlatformDevice(), in, handles)
+func (g *CompiledFunc) handlesToValues(handles []compute.Buffer) ([]hostio.Value, error) {
+	reader := flatten.NewParser[hostio.Value](handles)
 	values := make([]hostio.Value, len(g.outs))
 	for i, el := range g.outs {
 		val, err := reader.Unflatten(el)

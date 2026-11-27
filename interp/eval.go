@@ -396,7 +396,6 @@ func evalArrayAxes(fitp *Interpreter, src ir.Node, typ ir.ArrayType) ([]engine.N
 }
 
 func evalCastAtomToArrayExpr(fitp *Interpreter, expr ir.TypeCastExpr, x engine.NumericalElement, axes []engine.NumericalElement) (ir.Element, error) {
-	srcExpr := elements.NewExprAt(fitp.File(), expr)
 	arrayOps := fitp.engine()
 	shapeOfOnes := make([]engine.NumericalElement, len(axes))
 	for i := range axes {
@@ -406,7 +405,7 @@ func evalCastAtomToArrayExpr(fitp *Interpreter, expr ir.TypeCastExpr, x engine.N
 			return nil, err
 		}
 	}
-	reshaped, err := x.Reshape(fitp.env, srcExpr.ToExprAt().Node(), shapeOfOnes)
+	reshaped, err := x.Reshape(fitp.env, expr, shapeOfOnes)
 	if err != nil {
 		return nil, err
 	}
@@ -416,7 +415,7 @@ func evalCastAtomToArrayExpr(fitp *Interpreter, expr ir.TypeCastExpr, x engine.N
 func evalCastToArrayExpr(fitp *Interpreter, expr ir.TypeCastExpr, x engine.NumericalElement, targetType ir.ArrayType) (ir.Element, error) {
 	origType := expr.Orig().Type()
 	origRank, xDType := ir.Shape(origType)
-	targetDType, err := findConcreteType(fitp.Context(), expr.Node(), fitp.Context().CurrentFrame(), targetType.DataType())
+	targetDType, err := findConcreteType(fitp, expr.Node(), targetType.DataType())
 	if err != nil {
 		return nil, err
 	}
@@ -461,7 +460,7 @@ func evalCastExprTo(fitp *Interpreter, expr ir.TypeCastExpr, target ir.Type, x i
 		return elements.NewNamedType(targetT, x), nil
 	case *ir.GenericTypeParam:
 		var err error
-		target, err = findConcreteType(fitp.Context(), expr.Node(), fitp.Context().CurrentFrame(), targetT)
+		target, err = findConcreteType(fitp, expr.Node(), targetT)
 		if err != nil {
 			return nil, err
 		}
@@ -494,7 +493,11 @@ func evalUnaryExpression(fitp *Interpreter, expr *ir.UnaryExpr) (ir.Element, err
 	if err != nil {
 		return nil, err
 	}
-	return x.UnaryOp(fitp.env, expr)
+	cType, err := concretizeType(fitp, expr, expr.Type())
+	if err != nil {
+		return nil, err
+	}
+	return x.UnaryOp(fitp.env, expr, cType)
 }
 
 func evalBinaryExpression(fitp *Interpreter, expr *ir.BinaryExpr) (ir.Element, error) {
@@ -510,17 +513,44 @@ func evalBinaryExpression(fitp *Interpreter, expr *ir.BinaryExpr) (ir.Element, e
 	if err != nil {
 		return nil, err
 	}
-	cExpr := *expr
-	cExpr.Typ = cType
-	return x.BinaryOp(fitp.env, &cExpr, y)
+	return x.BinaryOp(fitp.env, expr, y, cType)
 }
 
-func evalStructLiteral(fitp *Interpreter, expr *ir.StructLitExpr) (ir.Element, error) {
-	under := ir.Underlying(expr.Typ)
-	structType, ok := under.(*ir.StructType)
-	if !ok {
-		return nil, fmterr.Errorf(fitp.File().FileSet(), expr.Node(), "underlying type %T is not a structure", expr.Typ)
+func evalCompositeLiteral(fitp *Interpreter, expr *ir.StructLitExpr) (ir.Element, error) {
+	if typeParam, ok := expr.Typ.(*ir.GenericTypeParam); ok {
+		return evalTypeParamZero(fitp, expr, typeParam)
 	}
+	if structType, ok := ir.Underlying(expr.Typ).(*ir.StructType); ok {
+		return evalCompositeStructLiteral(fitp, expr, structType)
+	}
+	return nil, fmterr.Errorf(fitp.File().FileSet(), expr.Node(), "composite literal of type %s:%T not supported", expr.Typ.ReferString(fitp.File()), expr.Typ)
+}
+
+// evalTypeParamZero evaluates the zero value of a generic type parameter.
+// If the type parameter has a value in the current frame (for example, in the
+// body of a generic function called with type arguments), the zero value of
+// the concrete type is returned. Otherwise, a zero element is returned until
+// the concrete type is known.
+func evalTypeParamZero(fitp *Interpreter, expr *ir.StructLitExpr, typeParam *ir.GenericTypeParam) (ir.Element, error) {
+	cType, err := concretizeType(fitp, expr, typeParam)
+	if err != nil {
+		return nil, err
+	}
+	if _, isParam := cType.(*ir.GenericTypeParam); isParam {
+		return elements.NewZero(cType)
+	}
+	zeroer, err := cast.To[ir.Zeroer](cType)
+	if err != nil {
+		return nil, err
+	}
+	zero := zeroer.Zero()
+	if zero == nil {
+		return nil, fmterr.Errorf(fitp.File().FileSet(), expr.Node(), "type %s has no zero value", cType.ReferString(fitp.File()))
+	}
+	return evalExpr(fitp, zero)
+}
+
+func evalCompositeStructLiteral(fitp *Interpreter, expr *ir.StructLitExpr, structType *ir.StructType) (ir.Element, error) {
 	fields := make(map[string]ir.Element, structType.NumFields())
 	for _, fieldLit := range expr.Elts {
 		valX := fieldLit.X
@@ -608,7 +638,7 @@ func evalExpr(fitp *Interpreter, expr ir.Expr) (_ ir.Element, err error) {
 	case *ir.SliceExpr:
 		return evalSliceExpr(fitp, exprT)
 	case *ir.StructLitExpr:
-		return evalStructLiteral(fitp, exprT)
+		return evalCompositeLiteral(fitp, exprT)
 	case *ir.CastExpr:
 		return evalCastExpr(fitp, exprT)
 	case *ir.TypeAssertExpr:
@@ -705,7 +735,7 @@ func evalFuncValExpr(fitp *Interpreter, expr *ir.FuncValExpr) (ir.Element, error
 
 // evalTypeValExpr returns an element encapsulating the concrete type referenced by expr.
 func evalTypeValExpr(fitp *Interpreter, expr *ir.TypeValExpr) (ir.Element, error) {
-	typeEl, err := findConcreteTypeElement(fitp.Context(), expr.Node(), fitp.Context().CurrentFrame(), expr.Val())
+	typeEl, err := findConcreteTypeElement(fitp, expr.Node(), expr.Val())
 	if err != nil {
 		return nil, err
 	}
@@ -732,7 +762,11 @@ func evalNumberCastExpr(fitp *Interpreter, expr *ir.NumberCastExpr) (ir.Element,
 	if err != nil {
 		return nil, err
 	}
-	return fitp.engine().ElementFromHostValue(fitp.env.ExprEval(), n.Cast(expr))
+	cType, err := concretizeType(fitp, expr, expr.Typ)
+	if err != nil {
+		return nil, err
+	}
+	return fitp.engine().ElementFromHostValue(fitp.env.ExprEval(), n.Cast(cType))
 }
 
 func evalSelectorExpr(fitp *Interpreter, ref *ir.SelectorExpr) (ir.Element, error) {
@@ -783,7 +817,11 @@ func evalEinsumExpr(fitp *Interpreter, ref *ir.EinsumExpr) (ir.Element, error) {
 	if err != nil {
 		return nil, err
 	}
-	return fitp.engine().Einsum(fitp, ref, x, y)
+	cType, err := concretizeType(fitp, ref, ref.Typ)
+	if err != nil {
+		return nil, err
+	}
+	return fitp.engine().Einsum(fitp, ref, x, y, cType)
 }
 
 func evalCallee(fitp *Interpreter, callee ir.Callee) (engine.Func, []ir.Element, error) {
@@ -836,7 +874,7 @@ func evalTypeArgumentExprs(fitp *Interpreter, callee *ir.FuncValExpr) ([]ir.Elem
 		if !isType {
 			continue
 		}
-		tpArgs[i], err = findConcreteTypeElement(fitp.Context(), callee.Node(), fitp.Context().CurrentFrame(), tp)
+		tpArgs[i], err = findConcreteTypeElement(fitp, callee.Node(), tp)
 		if err != nil {
 			return nil, err
 		}

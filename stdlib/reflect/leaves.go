@@ -25,19 +25,18 @@ import (
 )
 
 func evalArrays(env *engine.Env, call *ir.FuncCallExpr, recv ir.Element, genArgs, args []ir.Element) ([]ir.Element, error) {
-	ftype := call.Callee.FuncType()
-	if len(ftype.GenParams.Values) != 2 {
-		return nil, fmterr.Internalf("incorrect number of generic value: got %d but want 2", len(ftype.GenParams.Values))
+	if len(genArgs) != 2 {
+		return nil, fmterr.Internalf("incorrect number of generic arguments: got %d but want 2", len(genArgs))
 	}
-	genType, err := cast.To[*ir.TypeGenericValue](ftype.GenParams.Values[0])
+	genType, err := cast.To[*elements.GenericType](ir.BareValue(genArgs[0]))
 	if err != nil {
 		return nil, err
 	}
-	nums, err := cast.To[*ir.TypeGenericValue](ftype.GenParams.Values[1])
+	nums, err := cast.To[*elements.GenericType](ir.BareValue(genArgs[1]))
 	if err != nil {
 		return nil, err
 	}
-	return findLeaves(env, call, genType.DefinedType(), nums.DefinedType(), checkFieldType)
+	return findLeaves(env, call, genType.Value(), nums.Value(), checkFieldType)
 }
 
 func checkFieldType(env *engine.Env, field *ir.Field, nums ir.Type) bool {

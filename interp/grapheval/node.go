@@ -26,7 +26,6 @@ import (
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/build/ir/irkind"
 	"github.com/gx-org/gx/internal/concrete"
-	"github.com/gx-org/gx/internal/interp/flatten"
 	"github.com/gx-org/gx/interp/elements"
 	"github.com/gx-org/gx/interp/engine"
 	"github.com/gx-org/gx/interp/materialise"
@@ -87,7 +86,7 @@ func (n *BackendNode) out() compute.Value {
 }
 
 // BinaryOp applies a binary operator to x and y.
-func (n *BackendNode) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement) (_ engine.NumericalElement, err error) {
+func (n *BackendNode) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement, typ ir.Type) (_ engine.NumericalElement, err error) {
 	xNode, err := materialise.Element(n.ao, n)
 	if err != nil {
 		return nil, fmt.Errorf("cannot materialise %s in %s: %w", expr.X.SourceString(nil), expr.SourceString(nil), err)
@@ -152,15 +151,11 @@ func (n *BackendNode) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.Nu
 	if err != nil {
 		return nil, fmterr.Errorf(env.File().FileSet(), expr.Src, "cannot create binary operation for %v%s%v: %v", n, expr.Src.Op, y, err)
 	}
-	typ, err := concrete.Concrete(env.ExprEval(), expr.Typ)
-	if err != nil {
-		return nil, fmterr.Error(env.File().FileSet(), expr.Src, err)
-	}
 	return NewBackendNode(n.ao, typ, binaryNode)
 }
 
 // UnaryOp applies a unary operator on x.
-func (n *BackendNode) UnaryOp(env *engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
+func (n *BackendNode) UnaryOp(env *engine.Env, expr *ir.UnaryExpr, typ ir.Type) (engine.NumericalElement, error) {
 	if expr.Src.Op == token.ADD {
 		return n, nil
 	}
@@ -176,10 +171,6 @@ func (n *BackendNode) UnaryOp(env *engine.Env, expr *ir.UnaryExpr) (engine.Numer
 	}
 	if err != nil {
 		return nil, err
-	}
-	typ, err := concrete.Concrete(env.ExprEval(), expr.Type())
-	if err != nil {
-		return nil, fmterr.Error(env.File().FileSet(), expr.Src, err)
 	}
 	return NewBackendNode(n.ao, typ, unaryNode)
 }
@@ -323,8 +314,8 @@ func (n *BackendNode) Length(ev ir.Evaluator) (int, error) {
 }
 
 // Unflatten consumes the next handles to return a GX value.
-func (n *BackendNode) Unflatten(handles *flatten.Parser) (hostio.Value, error) {
-	return handles.ParseArray(n.typ)
+func (n *BackendNode) Unflatten(handles hostio.Parser) (hostio.Value, error) {
+	return hostio.NewDeviceArray(n.typ, handles.Next())
 }
 
 // Copy the node by returning itself.

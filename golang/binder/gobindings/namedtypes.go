@@ -281,6 +281,9 @@ func (s *structType) buildFields() ([]structField, error) {
 	fields := s.typ.Fields.Fields()
 	var structFields []structField
 	for _, field := range fields {
+		if bindings.SkipField(field) {
+			continue
+		}
 		goType, err := s.binder.bridgerType(field.Group.Type.Val())
 		if err != nil {
 			return nil, err
@@ -405,6 +408,9 @@ func (s structType) SetDeviceFieldsFromSliceValue() (string, error) {
 	// Construct all the field values.
 	fields := s.typ.Fields.Fields()
 	for i, field := range fields {
+		if bindings.SkipField(field) {
+			continue
+		}
 		fieldSrc := fmt.Sprintf("fields[%d]", i)
 		fieldTarget := fmt.Sprintf("field%d", i)
 		fieldLines, err := s.setTargetFromSourceType(fieldTarget, fieldSrc, field.Type())
@@ -415,6 +421,9 @@ func (s structType) SetDeviceFieldsFromSliceValue() (string, error) {
 	}
 	// Assign field values to their respective field within the structure.
 	for i, field := range fields {
+		if bindings.SkipField(field) {
+			continue
+		}
 		res = append(res, fmt.Sprintf("\ts.%s = field%d", field.Name.Name, i))
 	}
 	return strings.Join(res, "\n"), nil
@@ -425,11 +434,10 @@ var fieldToStringTemplate = template.Must(template.New("fieldToStringTMPL").Pars
 `))
 
 func (s structType) NamedTypeFieldsToString() (string, error) {
-	fields := s.typ.Fields.Fields()
-	return tmpl.IterateFunc(fields, func(i int, field *ir.Field) (string, error) {
+	return tmpl.IterateFunc(s.fields, func(i int, field structField) (string, error) {
 		bld := strings.Builder{}
 		if err := fieldToStringTemplate.Execute(&bld, map[string]string{
-			"FieldName": field.Name.Name,
+			"FieldName": field.Name,
 		}); err != nil {
 			return "", err
 		}

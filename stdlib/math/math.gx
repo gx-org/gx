@@ -73,8 +73,16 @@ func Floor[T dtype.Nums, S []int]([S...]T) [S...]T
 // Log1p returns log(1+x).
 func Log1p[T dtype.Nums, S []int]([S...]T) [S...]T
 
+func vjpLogistic[T dtype.Floats, S []int](x [S...]T) ([S...]T, func(res [S...]T) [S...]T) {
+	y := Logistic(x)
+	return y, func(res [S...]T) [S...]T {
+		return res * y * (1 - y)
+	}
+}
+
 // Logistic returns 1/(1+exp(-x)).
-func Logistic[T dtype.Nums, S []int]([S...]T) [S...]T
+// gx:@grad.SetVJP(vjpLogistic)
+func Logistic[T dtype.Floats, S []int](x [S...]T) [S...]T
 
 func inverse[T dtype.Nums, S []int](x [S...]T) [S...]T {
 	return 1 / x

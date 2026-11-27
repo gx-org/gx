@@ -19,6 +19,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/gomlx/compute/dtypes/gotype"
 	"github.com/gx-org/gx/build/ir"
+	"github.com/gx-org/gx/internal/interp/flatten"
 )
 
 type (
@@ -48,6 +49,9 @@ type (
 	Under interface {
 		Underlying() Value
 	}
+
+	// Parser unflattens the output of a graph computation into GX values.
+	Parser = *flatten.Parser[Value]
 )
 
 // Underlying returns the underlying value of a value.

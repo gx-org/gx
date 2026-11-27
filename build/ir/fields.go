@@ -52,6 +52,33 @@ func (l *FieldList) FieldListAST(from *File) *ast.FieldList {
 	return &src
 }
 
+// Refer returns an AST field referencing the field group from file.
+func (l *FieldGroup) Refer(file *File) *ast.Field {
+	var names []*ast.Ident
+	if len(l.Fields) > 0 {
+		names = make([]*ast.Ident, len(l.Fields))
+		for i, field := range l.Fields {
+			names[i] = field.Name
+		}
+	}
+	return &ast.Field{
+		Names: names,
+		Type:  l.Type.Refer(file),
+	}
+}
+
+// Refer returns an AST field list referencing the field list from file.
+func (l *FieldList) Refer(file *File) *ast.FieldList {
+	if l == nil {
+		return nil
+	}
+	list := make([]*ast.Field, len(l.List))
+	for i, grp := range l.List {
+		list[i] = grp.Refer(file)
+	}
+	return &ast.FieldList{List: list}
+}
+
 // ReferString represents the field list for an error message.
 func (l *FieldList) ReferString(from *File) string {
 	fields := l.Fields()

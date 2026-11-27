@@ -3,7 +3,7 @@ module github.com/gx-org/gx
 go 1.27
 
 require (
-	github.com/gomlx/compute v0.1.14
+	github.com/gomlx/compute v0.1.33
 	github.com/google/go-cmp v0.7.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.10.2

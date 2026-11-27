@@ -50,6 +50,13 @@ func (u *UnpackExpr) Expr() ast.Expr {
 	return u.X.Expr()
 }
 
+// Refer returns an AST expression referencing the unpacked expression from file.
+func (u *UnpackExpr) Refer(file *File) ast.Expr {
+	return &ast.Ellipsis{
+		Elt: u.X.Refer(file),
+	}
+}
+
 // Type returns the type of the expression.
 func (u *UnpackExpr) Type() Type {
 	return u.EltTyp

@@ -1,0 +1,133 @@
+package genericstruct02
+
+import (
+	"math/grad"
+	"num"
+)
+
+type floats interface {
+	float32 | float64
+}
+
+type Linear[Size int] struct {
+	Weights [Size]float32
+	Bias    float32
+}
+
+func (l Linear[Size]) forward(x [Size]float32) float32 {
+	return num.Dot(l.Weights, x) + l.Bias
+}
+
+func (l Linear[Size]) biasOnly() float32 {
+	return 2 * l.Bias
+}
+
+func loss[Size int](l Linear[Size], x [Size]float32, y float32) float32 {
+	err := l.forward(x) - y
+	return err * err
+}
+
+func lossIntermediate[Size int](l Linear[Size], x [Size]float32, y float32) float32 {
+	err := l.forward(x) - y
+	z := err * err
+	return z
+}
+
+func TestDirectMethodConcrete() (float32, Linear[3], [3]float32) {
+	l := Linear[3]{Weights: [3]float32{1, 2, 3}, Bias: 0.5}
+	x := [3]float32{2, -1, 4}
+	v, bckL, bckX := grad.Reverse(l.forward)(x)
+	return v, bckL(2), bckX(2)
+	// Want:
+	// 0: float32(12.5)
+	// 1: Linear[3]{
+	// 	Weights: [3]float32{4, -2, 8},
+	// 	Bias: float32(2),
+	// }
+	// 2: [3]float32{2, 4, 6}
+}
+
+func directGeneric[Size int](l Linear[Size], x [Size]float32) (float32, Linear[Size], [Size]float32) {
+	v, bckL, bckX := grad.Reverse(l.forward)(x)
+	return v, bckL(2), bckX(2)
+}
+
+func TestDirectMethodGeneric() (float32, Linear[3], [3]float32) {
+	l := Linear[3]{Weights: [3]float32{1, 2, 3}, Bias: 0.5}
+	x := [3]float32{2, -1, 4}
+	return directGeneric(l, x)
+	// Want:
+	// 0: float32(12.5)
+	// 1: Linear[3]{
+	// 	Weights: [3]float32{4, -2, 8},
+	// 	Bias: float32(2),
+	// }
+	// 2: [3]float32{2, 4, 6}
+}
+
+func TestDirectMethodNoArgs() (float32, Linear[3]) {
+	l := Linear[3]{Weights: [3]float32{1, 2, 3}, Bias: 0.5}
+	v, bckL := grad.Reverse(l.biasOnly)()
+	return v, bckL(3)
+	// Want:
+	// 0: float32(1)
+	// 1: Linear[3]{
+	// 	Weights: [3]float32{0, 0, 0},
+	// 	Bias: float32(6),
+	// }
+}
+
+func TestTransitiveMethodLoss() (float32, Linear[3], [3]float32, float32) {
+	l := Linear[3]{Weights: [3]float32{1, 2, 3}, Bias: 0.5}
+	x := [3]float32{2, -1, 4}
+	v, bckL, bckX, bckY := grad.Reverse(loss)(l, x, 10)
+	return v, bckL(1), bckX(1), bckY(1)
+	// Want:
+	// 0: float32(6.25)
+	// 1: Linear[3]{
+	// 	Weights: [3]float32{10, -5, 20},
+	// 	Bias: float32(5),
+	// }
+	// 2: [3]float32{5, 10, 15}
+	// 3: float32(-5)
+}
+
+func TestTransitiveMethodMultiPathIntermediate() (float32, Linear[3]) {
+	l := Linear[3]{Weights: [3]float32{1, 2, 3}, Bias: 0.5}
+	x := [3]float32{2, -1, 4}
+	v, bckL, _, _ := grad.Reverse(lossIntermediate)(l, x, 10)
+	return v, bckL(1)
+	// Want:
+	// 0: float32(6.25)
+	// 1: Linear[3]{
+	// 	Weights: [3]float32{10, -5, 20},
+	// 	Bias: float32(5),
+	// }
+}
+
+type Layer[T floats, Size int] struct {
+	Weights [Size]T
+	Bias    T
+}
+
+func (l Layer[T, Size]) forward(x [Size]T) T {
+	return num.Dot(l.Weights, x) + l.Bias
+}
+
+func layerLoss[T floats, Size int](l Layer[T, Size], x [Size]T, y T) T {
+	err := l.forward(x) - y
+	return err * err
+}
+
+func TestMultiParamMethod() (float64, Layer[float64, 2]) {
+	l := Layer[float64, 2]{Weights: [2]float64{1, 3}, Bias: 2}
+	x := [2]float64{2, 4}
+	v, bckL, _, _ := grad.Reverse(layerLoss)(l, x, 10)
+	return v, bckL(1)
+	// Want:
+	// 0: float64(36)
+	// 1: Layer[float64, 2]{
+	// 	Weights: [2]float64{24, 48},
+	// 	Bias: float64(12),
+	// }
+}

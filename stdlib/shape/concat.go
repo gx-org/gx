@@ -77,6 +77,7 @@ func irAdd(env *engine.Env, src ast.Expr, x, y engine.NumericalElement) (engine.
 			Typ: ir.IntType(),
 		},
 		y,
+		ir.IntType(),
 	)
 }
 

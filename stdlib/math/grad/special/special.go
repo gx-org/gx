@@ -43,8 +43,10 @@ type Expr struct {
 	value Value
 	expr  ast.Expr
 
-	// structType and terms represent a symbolic sum of struct-typed expressions
-	// accumulated field-by-field instead of with the '+' binary operator.
+	// file, structType, and terms represent a symbolic sum of struct-typed
+	// expressions accumulated field-by-field instead of with the '+' binary
+	// operator.
+	file       *ir.File
 	structType ir.Type
 	terms      []*Expr
 }
@@ -101,7 +103,7 @@ func (r *Expr) structCompositeLit() *ast.CompositeLit {
 		}
 	}
 	return &ast.CompositeLit{
-		Type: r.structType.NameDef(),
+		Type: r.structType.Refer(r.file),
 		Elts: elts,
 	}
 }
@@ -198,7 +200,7 @@ func (r *Expr) selectStructField(sel *ast.Ident) *Expr {
 	for i, term := range r.terms {
 		selected[i] = term.Select(sel)
 	}
-	return AddForType(field.Type(), selected...)
+	return AddForType(r.file, field.Type(), selected...)
 }
 
 // String returns the expression as a string
@@ -210,17 +212,17 @@ func (r *Expr) String() string {
 	return s.String()
 }
 
-// AddForType builds an add expression for values of typ, simplifying if possible.
+// AddForType builds an add expression for values of typ in file, simplifying if possible.
 // For struct types, terms are combined symbolically so fields can be selected
 // and accumulated without emitting the '+' binary operator on struct values.
-func AddForType(typ ir.Type, xs ...*Expr) *Expr {
+func AddForType(file *ir.File, typ ir.Type, xs ...*Expr) *Expr {
 	if _, isStruct := ir.Underlying(typ).(*ir.StructType); isStruct {
-		return addStruct(typ, xs...)
+		return addStruct(file, typ, xs...)
 	}
 	return Add(xs...)
 }
 
-func addStruct(typ ir.Type, xs ...*Expr) *Expr {
+func addStruct(file *ir.File, typ ir.Type, xs ...*Expr) *Expr {
 	var terms []*Expr
 	for _, x := range xs {
 		if x.IsZero() {
@@ -239,6 +241,7 @@ func addStruct(typ ir.Type, xs ...*Expr) *Expr {
 		return terms[0]
 	default:
 		return &Expr{
+			file:       file,
 			structType: typ,
 			terms:      terms,
 		}

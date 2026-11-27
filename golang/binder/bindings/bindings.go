@@ -68,12 +68,26 @@ func canBeOnDeviceStruct(tp *ir.StructType) error {
 		if err := CanBeOnDevice(group.Type.Val()); err != nil {
 			var fieldNames []string
 			for _, field := range group.Fields {
-				fieldNames = append(fieldNames, field.Name.Name)
+				if !SkipField(field) {
+					fieldNames = append(fieldNames, field.Name.Name)
+				}
 			}
-			return fmt.Errorf("cannot store on device fields %v: %v", fieldNames, err)
+			if len(fieldNames) > 0 {
+				return fmt.Errorf("cannot store on device fields %v: %v", fieldNames, err)
+			}
 		}
 	}
 	return nil
+}
+
+// SkipField returns true if no bindings are generated for a field because the field
+// is unexported and its type is an instance of a generic type which cannot be bound.
+func SkipField(field *ir.Field) bool {
+	named, ok := field.Type().(*ir.NamedType)
+	if !ok || ir.IsExported(field.Name.Name) || named.OriginNamed() == named {
+		return false
+	}
+	return CanBeOnDevice(named) != nil && CanBeOnDevice(named.Underlying.Val()) == nil
 }
 
 // CanBeOnDevice returns true if a type can be on device.
@@ -89,7 +103,7 @@ func CanBeOnDevice(tp ir.Type) error {
 	}
 	switch typT := tp.(type) {
 	case *ir.NamedType:
-		return CanBeOnDevice(typT.Underlying.Val())
+		return CanBeOnDevice(typT.OriginNamed().Underlying.Val())
 	case *ir.StructType:
 		return canBeOnDeviceStruct(typT)
 	case *ir.SliceType:

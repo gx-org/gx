@@ -36,12 +36,12 @@ type constant struct {
 }
 
 var (
-	_ engine.NonConstant  = (*constant)(nil)
-	_ engine.EvalShaper   = (*constant)(nil)
-	_ cmp.Canonical       = (*constant)(nil)
-	_ togo.CompileValue   = (*constant)(nil)
-	_ engine.Element      = (*constant)(nil)
-	_ flatten.Unflattener = (*constant)(nil)
+	_ engine.NonConstant                = (*constant)(nil)
+	_ engine.EvalShaper                 = (*constant)(nil)
+	_ cmp.Canonical                     = (*constant)(nil)
+	_ togo.CompileValue                 = (*constant)(nil)
+	_ engine.Element                    = (*constant)(nil)
+	_ flatten.Unflattener[hostio.Value] = (*constant)(nil)
 )
 
 func newConstant(cst engine.Constant) *constant {
@@ -61,8 +61,8 @@ func (c *constant) Type() ir.Type {
 }
 
 // UnaryOp applies a unary operator on x.
-func (c *constant) UnaryOp(env *engine.Env, expr *ir.UnaryExpr) (engine.NumericalElement, error) {
-	res, err := csteager.Unary(env, expr, c.cst)
+func (c *constant) UnaryOp(env *engine.Env, expr *ir.UnaryExpr, typ ir.Type) (engine.NumericalElement, error) {
+	res, err := csteager.Unary(env, expr, typ, c.cst)
 	if err != nil {
 		return nil, err
 	}
@@ -73,13 +73,13 @@ func (c *constant) UnaryOp(env *engine.Env, expr *ir.UnaryExpr) (engine.Numerica
 	if err != nil {
 		return nil, err
 	}
-	return el.UnaryOp(env, expr)
+	return el.UnaryOp(env, expr, typ)
 }
 
 // BinaryOp applies a binary operator to x and y.
 // Note that the receiver can be either the left or right argument.
-func (c *constant) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement) (engine.NumericalElement, error) {
-	res, err := csteager.Binary(env, expr, c.cst, y)
+func (c *constant) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.NumericalElement, typ ir.Type) (engine.NumericalElement, error) {
+	res, err := csteager.Binary(env, expr, typ, c.cst, y)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +90,7 @@ func (c *constant) BinaryOp(env *engine.Env, expr *ir.BinaryExpr, y engine.Numer
 	if err != nil {
 		return nil, err
 	}
-	return el.BinaryOp(env, expr, y)
+	return el.BinaryOp(env, expr, y, typ)
 }
 
 // Cast an element into a given data type.
@@ -174,7 +174,7 @@ func (c *constant) toHostArray() (*hostio.HostArray, error) {
 }
 
 // Unflatten returns the same constant.
-func (c *constant) Unflatten(handles *flatten.Parser) (hostio.Value, error) {
+func (c *constant) Unflatten(handles hostio.Parser) (hostio.Value, error) {
 	return c.toHostArray()
 }
 

@@ -136,10 +136,12 @@ func (d *decls) resolveAll(pkgScope *pkgResolveScope) bool {
 	// Build named types header. The underlying types are not being resolved yet.
 	var nTypes []*irNamedType
 	ibld := pkgScope.irBuilder()
+	pkgScope.unresolvedTypes = make(map[*ir.NamedType]*namedType)
 	for pNode := range iterToken[*namedType](d.declarations, filterTok(token.TYPE)) {
 		nType, nTypeOk := pNode.node.build(ibld)
 		ibld.Set(pNode, nType.ext)
 		nTypes = append(nTypes, nType)
+		pkgScope.unresolvedTypes[nType.ext] = nType.bType
 		ok = ok && nTypeOk
 	}
 	// Build all variables.
@@ -152,9 +154,10 @@ func (d *decls) resolveAll(pkgScope *pkgResolveScope) bool {
 	if compEvalOk := d.buildConstants(pkgScope); !compEvalOk {
 		return false
 	}
-	// Resolve underlying types.
+	// Resolve underlying types in declaration order.
+	// Types used before being resolved are resolved on demand (see resolveNamedType).
 	for _, namedType := range nTypes {
-		underOk := namedType.bType.buildUnderlying(pkgScope, namedType.ext)
+		underOk := pkgScope.resolveNamedType(namedType.bType.src, namedType.ext)
 		ok = ok && underOk
 	}
 	// Build compeval functions.

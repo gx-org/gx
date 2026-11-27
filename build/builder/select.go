@@ -134,9 +134,16 @@ func specializeReceiverFunc(scope resolveScope, sel *ir.SelectorExpr) (ir.Expr, 
 	if !ok {
 		return sel, true
 	}
-	receiverNamed, ok := sel.X.Type().(*ir.NamedType)
+	return specializeFuncFromReceiver(scope, sel, sel.X, method)
+}
+
+func specializeFuncFromReceiver(scope resolveScope, expr, recv ir.Expr, fn ir.Func) (ir.Expr, bool) {
+	if recv == nil {
+		return expr, true
+	}
+	receiverNamed, ok := recv.Type().(*ir.NamedType)
 	if !ok {
-		return sel, true
+		return expr, true
 	}
 	var receiverArgs []ir.Expr
 	for _, genericValue := range receiverNamed.GenParams.Values {
@@ -145,18 +152,18 @@ func specializeReceiverFunc(scope resolveScope, sel *ir.SelectorExpr) (ir.Expr, 
 		}
 	}
 	if len(receiverArgs) == 0 {
-		return sel, true
+		return expr, true
 	}
 	compEval, ok := scope.compEval()
 	if !ok {
-		return sel, false
+		return expr, false
 	}
-	fun := ir.NewFuncValExpr(sel, method)
-	genericValues, ok := buildGenericValues(scope, sel, compEval, &fun.FuncType().GenParams, receiverArgs)
+	fun := ir.NewFuncValExpr(expr, fn)
+	genericValues, ok := buildGenericValues(scope, expr, compEval, &fun.FuncType().GenParams, receiverArgs)
 	if !ok {
 		return fun, false
 	}
-	return generics.SpecialiseParams(compEval, sel, fun, genericValues)
+	return generics.SpecialiseParams(compEval, expr, fun, genericValues)
 }
 
 func (n *selectorExpr) buildTypeExpr(rscope resolveScope) (*ir.TypeValExpr, bool) {
