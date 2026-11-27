@@ -973,6 +973,28 @@ func (s *arrayType) Kind() irkind.Kind {
 	return irkind.Array
 }
 
+// Refer returns an AST expression referencing the array type from file.
+func (s *arrayType) Refer(file *File) ast.Expr {
+	dtype := s.DTypeF.Refer(file)
+	rank := s.RankF.Refer(file)
+	if rank == nil {
+		return dtype
+	}
+	arr, ok := rank.(*ast.ArrayType)
+	if !ok {
+		return &ast.ArrayType{
+			Len: rank,
+			Elt: dtype,
+		}
+	}
+	cur := arr
+	for cur.Elt != nil {
+		cur = cur.Elt.(*ast.ArrayType)
+	}
+	cur.Elt = dtype
+	return arr
+}
+
 // ElementType returns the type of the element with rank-1.
 func (s *arrayType) ElementType() (Type, bool) {
 	subRank, ok := s.RankF.SubRank()
