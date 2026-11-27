@@ -60,6 +60,7 @@ package bindings
 
 //go:generate go run ../../golang/binder/genbind --gx_package=github.com/gx-org/gx/tests/bindings/generics
 //go:generate go run ../../golang/packager --gx_package=github.com/gx-org/gx/tests/bindings/generics
+//go:generate go run ../../golang/tools/testsmain/testsmain.go --gx_test_folder=../../golang/tests/genericstest
 
 //go:generate go run ../../golang/packager --gx_package=github.com/gx-org/gx/examples/linearregression/linearregression
 //go:generate go run ../../golang/binder/genbind --gx_package=github.com/gx-org/gx/examples/linearregression/linearregression
