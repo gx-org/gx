@@ -17,12 +17,10 @@ package elements
 
 import (
 	"fmt"
-	"go/token"
 	"reflect"
 
 	"github.com/pkg/errors"
 	"github.com/gomlx/compute/shapes"
-	gxfmt "github.com/gx-org/gx/base/fmt"
 	"github.com/gx-org/gx/build/fmterr"
 	"github.com/gx-org/gx/build/ir"
 	"github.com/gx-org/gx/internal/base/cast"
@@ -30,36 +28,6 @@ import (
 	"github.com/gx-org/gx/internal/interp/constants"
 	"github.com/gx-org/gx/internal/interp/coreiface"
 	"github.com/gx-org/gx/interp/engine"
-	"github.com/gx-org/gx/src/gx/ast"
-)
-
-type (
-	// NodeFile is an expression with the file in which it is declared.
-	NodeFile[T ir.IR] struct {
-		file *ir.File
-		node T
-	}
-
-	// NodeAt is a generic GX node.
-	NodeAt = NodeFile[ir.IR]
-
-	// ExprAt is a generic GX expression.
-	ExprAt = NodeFile[ir.Expr]
-
-	// CallAt is a function call GX expression.
-	CallAt = NodeFile[*ir.FuncCallExpr]
-
-	// FieldAt is a typed field at a given position.
-	FieldAt = NodeFile[*ir.Field]
-
-	// SelectAt is a typed field at a given position.
-	SelectAt = NodeFile[*ir.SelectorExpr]
-
-	// ValueAt is a generic GX expression.
-	ValueAt = NodeFile[ir.Value]
-
-	// StorageAt is a generic GX expression.
-	StorageAt = NodeFile[ir.Storage]
 )
 
 // Map transforms a collection of element into a different type.
@@ -70,52 +38,6 @@ func Map[T any](f func(ir.Element) (T, error), el ir.Element) ([]T, error) {
 // ToWithElements returns the string value stored in a element.
 func ToWithElements(el ir.Element) (coreiface.WithElements, error) {
 	return coreiface.ToWithElements(el)
-}
-
-// NewNodeAt returns a new expression at a given position.
-func NewNodeAt[T ir.IR](file *ir.File, expr T) NodeFile[T] {
-	return NodeFile[T]{file: file, node: expr}
-}
-
-// NewExprAt returns a new expression at a given position.
-func NewExprAt(file *ir.File, expr ir.Expr) ExprAt {
-	return NewNodeAt(file, expr)
-}
-
-// FSet returns the fileset of the expression.
-func (ea NodeFile[T]) FSet() *token.FileSet {
-	return ea.file.Package.FSet
-}
-
-// Node returns the expression.
-func (ea NodeFile[T]) Node() T {
-	return ea.node
-}
-
-// Source of the node.
-func (ea NodeFile[T]) Source() ast.Node {
-	var node ir.IR = ea.node
-	return node.(ir.Node).Node()
-}
-
-// ToExprAt converts a type position into a generic node position.
-func (ea NodeFile[T]) ToExprAt() ExprAt {
-	node := any(ea.node)
-	return NewNodeAt(ea.file, node.(ir.Expr))
-}
-
-// File returns the file in which the expression is declared.
-func (ea NodeFile[T]) File() *ir.File {
-	return ea.file
-}
-
-// String representation of the node in the source code.
-func (ea NodeFile[T]) String() string {
-	var node ir.IR = ea.node
-	return fmt.Sprintf("%s%s",
-		fmterr.At(ea.file.FileSet(), node.(ir.Node).Node()).String(),
-		gxfmt.String(ea.node),
-	)
 }
 
 // IntFromElement converts an element to an int.
