@@ -320,3 +320,56 @@ func TestRankRefer(t *testing.T) {
 		})
 	}
 }
+
+func TestFieldStructAndVarArgsRefer(t *testing.T) {
+	otherFile, aliasFile := referTestFiles()
+	plain := newNamedType("Plain", ir.Int32Type())
+
+	var nilFields *ir.FieldList
+	if got := nilFields.Refer(testFile); got != nil {
+		t.Errorf("(*ir.FieldList)(nil).Refer() = %v, want nil", got)
+	}
+
+	anonField := (&ir.FieldGroup{Type: ir.TypeExpr(nil, plain)}).Refer(otherFile)
+	if anonField.Names != nil {
+		t.Errorf("anon FieldGroup.Refer(otherFile).Names = %v, want nil", anonField.Names)
+	}
+	if got := gxfmt.Format(&ast.FuncType{Params: &ast.FieldList{}, Results: &ast.FieldList{List: []*ast.Field{anonField}}}); got != "func() ir_test.Plain" {
+		t.Errorf("anon FieldGroup.Refer(otherFile) formatted as %q, want %q", got, "func() ir_test.Plain")
+	}
+
+	namedFields := irhelper.Fields("a", "b", plain, "c", ir.IntType())
+	if got := gxfmt.Format(&ast.FuncType{Params: namedFields.Refer(aliasFile)}); got != "func(a, b myir.Plain, c int)" {
+		t.Errorf("FieldList.Refer(aliasFile) formatted as %q, want %q", got, "func(a, b myir.Plain, c int)")
+	}
+
+	st := &ir.StructType{Fields: namedFields}
+	varArgsPlain := &ir.VarArgsType{
+		Src: &ast.Ellipsis{Ellipsis: 1, Elt: &ast.Ident{Name: "Stale"}},
+		Typ: &ir.SliceType{DType: ir.TypeExpr(nil, plain), Rank: 1},
+	}
+	varArgsInt := &ir.VarArgsType{Typ: ir.IntSliceType()}
+
+	for _, tc := range []struct {
+		name string
+		typ  ir.Type
+		file *ir.File
+		want string
+	}{
+		{"EmptyStructNilFields", &ir.StructType{}, testFile, "struct{}"},
+		{"EmptyStructEmptyFields", &ir.StructType{Fields: &ir.FieldList{}}, testFile, "struct{}"},
+		{"StructSamePackage", st, testFile, "struct {\n\ta, b Plain\n\tc    int\n}"},
+		{"StructCrossPackage", st, otherFile, "struct {\n\ta, b ir_test.Plain\n\tc    int\n}"},
+		{"StructCrossPackageAlias", st, aliasFile, "struct {\n\ta, b myir.Plain\n\tc    int\n}"},
+		{"VarArgsBuiltin", varArgsInt, testFile, "...int"},
+		{"VarArgsSamePackage", varArgsPlain, testFile, "...Plain"},
+		{"VarArgsCrossPackage", varArgsPlain, otherFile, "...ir_test.Plain"},
+		{"VarArgsCrossPackageAlias", varArgsPlain, aliasFile, "...myir.Plain"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := gxfmt.Format(tc.typ.Refer(tc.file)); got != tc.want {
+				t.Errorf("gxfmt.Format(%T.Refer(%v)) = %q, want %q", tc.typ, tc.file, got, tc.want)
+			}
+		})
+	}
+}

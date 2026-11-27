@@ -200,6 +200,17 @@ func (s *StructType) NumFields() int {
 	return n
 }
 
+// Refer returns an AST expression referencing the structure type from file.
+func (s *StructType) Refer(file *File) ast.Expr {
+	fields := s.Fields.Refer(file)
+	if fields == nil || len(fields.List) == 0 {
+		return &ast.StructType{
+			Fields: &ast.FieldList{Opening: 1, Closing: 1},
+		}
+	}
+	return &ast.StructType{Fields: fields}
+}
+
 // StructTypeAST returns the AST tree of the structure type.
 func (s *StructType) StructTypeAST(from *File) *ast.StructType {
 	src := *s.Src

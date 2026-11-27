@@ -31,9 +31,12 @@ func (*VarArgsType) node()         {}
 func (*VarArgsType) storage()      {}
 func (*VarArgsType) storageValue() {}
 
-// Refer to the type.
+// Refer returns an AST expression referencing the varargs type from file.
 func (tp *VarArgsType) Refer(file *File) ast.Expr {
-	return tp.Src
+	return &ast.Ellipsis{
+		Ellipsis: 1,
+		Elt:      tp.Typ.DType.Val().Refer(file),
+	}
 }
 
 // Node returns the node in the AST tree.
