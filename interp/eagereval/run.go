@@ -31,7 +31,7 @@ func Run(dev *api.Device, fn *ir.FuncDecl, receiver hostio.Value, args []hostio.
 	defer func() {
 		if err != nil {
 			recvName := ""
-			if recv := fn.FType.ReceiverField(); recv != nil {
+			if recv := fn.FType.ReceiverField(); recv != nil && recv.Name != nil {
 				recvName = recv.Name.Name + "."
 			}
 			err = fmt.Errorf("%s.%s%s evaluation error:\n%w", fn.File().Package.Path(), recvName, fn.Name(), err)
